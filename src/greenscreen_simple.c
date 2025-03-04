@@ -162,8 +162,7 @@ static void simple_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, SETTING_RADIUS, .001);
 }
 
-static enum gs_color_space simple_get_color_space(void *data, size_t count,
-						     const enum gs_color_space *preferred_spaces)
+static enum gs_color_space simple_get_color_space(void *data, size_t count, const enum gs_color_space *preferred_spaces)
 {
 	UNUSED_PARAMETER(count);
 	UNUSED_PARAMETER(preferred_spaces);
