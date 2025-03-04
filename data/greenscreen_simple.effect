@@ -1,0 +1,167 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+
+uniform float opacity;
+uniform float contrast;
+uniform float brightness;
+uniform float gamma;
+
+uniform float4 key_color;
+uniform float similarity;
+uniform float smoothness;
+
+sampler_state textureSampler {
+	Filter    = Linear;
+	AddressU  = Clamp;
+	AddressV  = Clamp;
+};
+
+struct VertData {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+
+VertData VSDefault(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv  = v_in.uv;
+	return vert_out;
+}
+
+float3 RgbToHsv(float3 c)
+{
+	float3 hsv = 0;
+	float maxc = max(max(c.r, c.g), c.b);
+	float minc = min(min(c.r, c.g), c.b);
+	
+	hsv[2] = maxc;
+	if (minc == maxc)
+		return hsv;
+	
+	float diff = maxc - minc;
+	if (maxc != 0)
+		hsv[1] = diff / maxc;
+	
+	float h = 0;
+	if (c.r == maxc)
+		h = (c.g - c.b) / diff;
+	else if (c.g == maxc)
+		h = 2.0f + (c.b - c.r) / diff;
+	else
+		h = 4.0f + (c.r - c.g) / diff;
+	  
+	hsv[0] = h / 6.0f;
+	if (hsv[0] < 0)
+		hsv[0] += 1;
+
+	return hsv;
+}
+
+float GetMask(float3 hsv, float3 key)
+{
+	float mask = 0;
+
+	// hue distance
+	float hueDelta = min(abs(hsv[0] - key[0]), abs(hsv[0] - key[0] - 1));
+	if (hueDelta >= similarity)
+		mask = 1;
+	
+	// if too desaturated, ignore
+	if (hsv[1] < smoothness)
+		mask = 1;
+		
+	// if too bright, ignore
+	if (hsv[2] > opacity)
+		mask = 1;
+
+	return mask;
+}
+
+float4 SampleColor(float2 uv)
+{
+	float4 rgba = image.Sample(textureSampler, uv);
+	rgba.rgb *= (rgba.a > 0.) ? (1. / rgba.a) : 0.;
+	return rgba;
+}
+
+float4 PSColorKeyRGBA(VertData v_in) : TARGET
+{
+	float3 key = RgbToHsv(key_color.rgb);
+	float4 color = SampleColor(v_in.uv);
+	
+#define NUM_SAMPLES 8
+#define NUM_TOLERANCE 3
+	float dpos = .002f;
+	float2 positions[NUM_SAMPLES];
+	positions[0] = float2(v_in.uv.x + dpos, v_in.uv.y);
+	positions[1] = float2(v_in.uv.x - dpos, v_in.uv.y);
+	positions[2] = float2(v_in.uv.x, v_in.uv.y - dpos);
+	positions[3] = float2(v_in.uv.x, v_in.uv.y + dpos);
+	positions[4] = float2(v_in.uv.x - dpos * .707f, v_in.uv.y - dpos * .707f);
+	positions[5] = float2(v_in.uv.x - dpos * .707f, v_in.uv.y + dpos * .707f);
+	positions[6] = float2(v_in.uv.x + dpos * .707f, v_in.uv.y - dpos * .707f);
+	positions[7] = float2(v_in.uv.x + dpos * .707f, v_in.uv.y + dpos * .707f);
+	
+	int countFore = 0;
+	int countBack = 0;
+	float4 colorFore = 0;
+	float4 colorBack = 0;
+	for (int i = 0; i < NUM_SAMPLES; i++)
+	{
+		float4 c = SampleColor(positions[i]);
+		float m = GetMask(RgbToHsv(c.rgb), key);
+		if (m > .5f)
+		{
+			countFore++;
+			colorFore += c;
+		}
+		else
+		{
+			countBack++;
+			colorBack += c;
+		}
+	}
+	colorFore /= countFore;
+	colorBack /= countBack;
+	
+	float4 result = color;
+	
+	float mask = GetMask(RgbToHsv(color.rgb), key);
+	if (mask < .5f)
+	{
+		if (countFore >= NUM_SAMPLES - NUM_TOLERANCE)
+			mask = 1;
+	}
+	else
+	{
+		if (countFore <= NUM_TOLERANCE)
+		{
+			mask = 0;
+		}
+		else if (countFore < NUM_SAMPLES - NUM_TOLERANCE)
+		{
+			result.rgb = colorFore.rgb;
+		
+//			float alphas[3];
+//			for (int i = 0; i < 3; i++)
+//				alphas[i] = (color[i] - colorBack[i]) / (colorFore[i] - colorBack[i]);
+//			mask = saturate((alphas[0] * key_color[0] + alphas[1] * key_color[1] + alphas[2] * key_color[2]) / ( key_color[0] +  key_color[1] +  key_color[2]));
+
+			mask = float(countFore) / NUM_SAMPLES;
+		}
+	}
+	
+	result.a *= mask;
+	result.rgb *= result.a;
+	return result;
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSColorKeyRGBA(v_in);
+	}
+}
