@@ -1,14 +1,10 @@
 uniform float4x4 ViewProj;
 uniform texture2d image;
 
-uniform float opacity;
-uniform float contrast;
-uniform float brightness;
-uniform float gamma;
-
 uniform float4 key_color;
 uniform float similarity;
-uniform float smoothness;
+uniform float desaturation;
+uniform float darkness;
 
 sampler_state textureSampler {
 	Filter    = Linear;
@@ -67,12 +63,12 @@ float GetMask(float3 hsv, float3 key)
 	if (hueDelta >= similarity)
 		mask = 1;
 	
-	// if too desaturated, ignore
-	if (hsv[1] < smoothness)
+	// keep if desaturated
+	if (hsv[1] < desaturation)
 		mask = 1;
 		
-	// if too bright, ignore
-	if (hsv[2] > opacity)
+	// keep if dark
+	if (hsv[2] < darkness)
 		mask = 1;
 
 	return mask;

@@ -5,25 +5,15 @@
 
 /* clang-format off */
 
-#define SETTING_SDR_ONLY_INFO          "sdr_only_info"
-#define SETTING_OPACITY                "opacity"
-#define SETTING_CONTRAST               "contrast"
-#define SETTING_BRIGHTNESS             "brightness"
-#define SETTING_GAMMA                  "gamma"
-#define SETTING_COLOR_TYPE             "key_color_type"
 #define SETTING_KEY_COLOR              "key_color"
 #define SETTING_SIMILARITY             "similarity"
-#define SETTING_SMOOTHNESS             "smoothness"
+#define SETTING_DESATURATION             "desaturation"
+#define SETTING_DARKNESS                "darkness"
 
-#define TEXT_SDR_ONLY_INFO             obs_module_text("SdrOnlyInfo")
-#define TEXT_OPACITY                   obs_module_text("Opacity")
-#define TEXT_CONTRAST                  obs_module_text("Contrast")
-#define TEXT_BRIGHTNESS                obs_module_text("Brightness")
-#define TEXT_GAMMA                     obs_module_text("Gamma")
-#define TEXT_COLOR_TYPE                obs_module_text("KeyColorType")
 #define TEXT_KEY_COLOR                 obs_module_text("KeyColor")
 #define TEXT_SIMILARITY                obs_module_text("Similarity")
-#define TEXT_SMOOTHNESS                obs_module_text("Smoothness")
+#define TEXT_DESATURATION                obs_module_text("Desaturation")
+#define TEXT_DARKNESS                   obs_module_text("Darkness")
 
 /* clang-format on */
 
@@ -32,23 +22,15 @@ struct color_key_filter_data_v2 {
 
 	gs_effect_t *effect;
 
-	gs_eparam_t *opacity_param;
-	gs_eparam_t *contrast_param;
-	gs_eparam_t *brightness_param;
-	gs_eparam_t *gamma_param;
-
 	gs_eparam_t *key_color_param;
 	gs_eparam_t *similarity_param;
-	gs_eparam_t *smoothness_param;
-
-	float opacity;
-	float contrast;
-	float brightness;
-	float gamma;
+	gs_eparam_t *desaturation_param;
+	gs_eparam_t *darkness_param;
 
 	struct vec4 key_color;
 	float similarity;
-	float smoothness;
+	float desaturation;
+	float darkness;
 };
 
 static const char *simple_name(void *unused)
@@ -57,49 +39,18 @@ static const char *simple_name(void *unused)
 	return obs_module_text("Greenscreen Joe");
 }
 
-static inline void color_settings_update_v2(struct color_key_filter_data_v2 *filter, obs_data_t *settings)
-{
-	filter->opacity = (float)obs_data_get_double(settings, SETTING_OPACITY);
-
-	double contrast = obs_data_get_double(settings, SETTING_CONTRAST);
-	contrast = (contrast < 0.0) ? (1.0 / (-contrast + 1.0)) : (contrast + 1.0);
-	filter->contrast = (float)contrast;
-
-	filter->brightness = (float)obs_data_get_double(settings, SETTING_BRIGHTNESS);
-
-	double gamma = obs_data_get_double(settings, SETTING_GAMMA);
-	gamma = (gamma < 0.0) ? (-gamma + 1.0) : (1.0 / (gamma + 1.0));
-	filter->gamma = (float)gamma;
-}
-
-static inline void key_settings_update_v2(struct color_key_filter_data_v2 *filter, obs_data_t *settings)
-{
-	int64_t similarity = obs_data_get_int(settings, SETTING_SIMILARITY);
-	int64_t smoothness = obs_data_get_int(settings, SETTING_SMOOTHNESS);
-	uint32_t key_color = (uint32_t)obs_data_get_int(settings, SETTING_KEY_COLOR);
-	const char *key_type = obs_data_get_string(settings, SETTING_COLOR_TYPE);
-
-	if (strcmp(key_type, "green") == 0)
-		key_color = 0x00FF00;
-	else if (strcmp(key_type, "blue") == 0)
-		key_color = 0xFF0000;
-	else if (strcmp(key_type, "red") == 0)
-		key_color = 0x0000FF;
-	else if (strcmp(key_type, "magenta") == 0)
-		key_color = 0xFF00FF;
-
-	vec4_from_rgba(&filter->key_color, key_color | 0xFF000000);
-
-	filter->similarity = (float)similarity / 1000.0f;
-	filter->smoothness = (float)smoothness / 1000.0f;
-}
-
 static void color_key_update_v2(void *data, obs_data_t *settings)
 {
 	struct color_key_filter_data_v2 *filter = data;
 
-	color_settings_update_v2(filter, settings);
-	key_settings_update_v2(filter, settings);
+	uint32_t key_color = (uint32_t)obs_data_get_int(settings, SETTING_KEY_COLOR);
+	vec4_from_rgba(&filter->key_color, key_color | 0xFF000000);
+
+	filter->similarity = (float)obs_data_get_double(settings, SETTING_SIMILARITY);
+
+	filter->desaturation = (float)obs_data_get_double(settings, SETTING_DESATURATION);
+
+	filter->darkness = (float)obs_data_get_double(settings, SETTING_DARKNESS);
 }
 
 static void simple_destroy(void *data)
@@ -126,13 +77,10 @@ static void *simple_create(obs_data_t *settings, obs_source_t *context)
 
 	filter->effect = gs_effect_create_from_file(effect_path, NULL);
 	if (filter->effect) {
-		filter->opacity_param = gs_effect_get_param_by_name(filter->effect, "opacity");
-		filter->contrast_param = gs_effect_get_param_by_name(filter->effect, "contrast");
-		filter->brightness_param = gs_effect_get_param_by_name(filter->effect, "brightness");
-		filter->gamma_param = gs_effect_get_param_by_name(filter->effect, "gamma");
 		filter->key_color_param = gs_effect_get_param_by_name(filter->effect, "key_color");
 		filter->similarity_param = gs_effect_get_param_by_name(filter->effect, "similarity");
-		filter->smoothness_param = gs_effect_get_param_by_name(filter->effect, "smoothness");
+		filter->desaturation_param = gs_effect_get_param_by_name(filter->effect, "desaturation");
+		filter->darkness_param = gs_effect_get_param_by_name(filter->effect, "darkness");
 	}
 
 	obs_leave_graphics();
@@ -168,13 +116,10 @@ static void simple_render(void *data, gs_effect_t *effect)
 		const enum gs_color_format format = gs_get_format_from_space(source_space);
 		if (obs_source_process_filter_begin_with_color_space(filter->context, format, source_space,
 								     OBS_ALLOW_DIRECT_RENDERING)) {
-			gs_effect_set_float(filter->opacity_param, filter->opacity);
-			gs_effect_set_float(filter->contrast_param, filter->contrast);
-			gs_effect_set_float(filter->brightness_param, filter->brightness);
-			gs_effect_set_float(filter->gamma_param, filter->gamma);
 			gs_effect_set_vec4(filter->key_color_param, &filter->key_color);
 			gs_effect_set_float(filter->similarity_param, filter->similarity);
-			gs_effect_set_float(filter->smoothness_param, filter->smoothness);
+			gs_effect_set_float(filter->desaturation_param, filter->desaturation);
+			gs_effect_set_float(filter->darkness_param, filter->darkness);
 
 			gs_blend_state_push();
 			gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
@@ -186,41 +131,14 @@ static void simple_render(void *data, gs_effect_t *effect)
 	}
 }
 
-static bool key_type_changed(obs_properties_t *props, obs_property_t *p, obs_data_t *settings)
-{
-	const char *type = obs_data_get_string(settings, SETTING_COLOR_TYPE);
-	bool custom = strcmp(type, "custom") == 0;
-
-	obs_property_set_visible(obs_properties_get(props, SETTING_KEY_COLOR), custom);
-
-	UNUSED_PARAMETER(p);
-	return true;
-}
-
 static obs_properties_t *simple_properties(void *data)
 {
 	obs_properties_t *props = obs_properties_create();
 
-	obs_properties_add_text(props, SETTING_SDR_ONLY_INFO, TEXT_SDR_ONLY_INFO, OBS_TEXT_INFO);
-
-	obs_property_t *p = obs_properties_add_list(props, SETTING_COLOR_TYPE, TEXT_COLOR_TYPE, OBS_COMBO_TYPE_LIST,
-						    OBS_COMBO_FORMAT_STRING);
-	obs_property_list_add_string(p, obs_module_text("Green"), "green");
-	obs_property_list_add_string(p, obs_module_text("Blue"), "blue");
-	obs_property_list_add_string(p, obs_module_text("Red"), "red");
-	obs_property_list_add_string(p, obs_module_text("Magenta"), "magenta");
-	obs_property_list_add_string(p, obs_module_text("CustomColor"), "custom");
-
-	obs_property_set_modified_callback(p, key_type_changed);
-
 	obs_properties_add_color(props, SETTING_KEY_COLOR, TEXT_KEY_COLOR);
-	obs_properties_add_int_slider(props, SETTING_SIMILARITY, TEXT_SIMILARITY, 1, 1000, 1);
-	obs_properties_add_int_slider(props, SETTING_SMOOTHNESS, TEXT_SMOOTHNESS, 1, 1000, 1);
-
-	obs_properties_add_float_slider(props, SETTING_OPACITY, TEXT_OPACITY, 0.0, 1.0, 0.0001);
-	obs_properties_add_float_slider(props, SETTING_CONTRAST, TEXT_CONTRAST, -4.0, 4.0, 0.01);
-	obs_properties_add_float_slider(props, SETTING_BRIGHTNESS, TEXT_BRIGHTNESS, -1.0, 1.0, 0.0001);
-	obs_properties_add_float_slider(props, SETTING_GAMMA, TEXT_GAMMA, -1.0, 1.0, 0.01);
+	obs_properties_add_float_slider(props, SETTING_SIMILARITY, TEXT_SIMILARITY, 0.0, 1.0, 0.0001);
+	obs_properties_add_float_slider(props, SETTING_DESATURATION, TEXT_DESATURATION, 0.0, 1.0, 0.0001);
+	obs_properties_add_float_slider(props, SETTING_DARKNESS, TEXT_DARKNESS, 0.0, 1.0, 0.0001);
 
 	UNUSED_PARAMETER(data);
 	return props;
@@ -228,14 +146,10 @@ static obs_properties_t *simple_properties(void *data)
 
 static void simple_defaults(obs_data_t *settings)
 {
-	obs_data_set_default_double(settings, SETTING_OPACITY, 1.0);
-	obs_data_set_default_double(settings, SETTING_CONTRAST, 0.0);
-	obs_data_set_default_double(settings, SETTING_BRIGHTNESS, 0.0);
-	obs_data_set_default_double(settings, SETTING_GAMMA, 0.0);
 	obs_data_set_default_int(settings, SETTING_KEY_COLOR, 0x00FF00);
-	obs_data_set_default_string(settings, SETTING_COLOR_TYPE, "green");
-	obs_data_set_default_int(settings, SETTING_SIMILARITY, 80);
-	obs_data_set_default_int(settings, SETTING_SMOOTHNESS, 50);
+	obs_data_set_default_double(settings, SETTING_SIMILARITY, .1);
+	obs_data_set_default_double(settings, SETTING_DESATURATION, .1);
+	obs_data_set_default_double(settings, SETTING_DARKNESS, .05);
 }
 
 static enum gs_color_space simple_get_color_space(void *data, size_t count,
