@@ -7,13 +7,15 @@
 
 #define SETTING_KEY_COLOR              "key_color"
 #define SETTING_SIMILARITY             "similarity"
-#define SETTING_DESATURATION             "desaturation"
-#define SETTING_DARKNESS                "darkness"
+#define SETTING_DESATURATION           "desaturation"
+#define SETTING_DARKNESS               "darkness"
+#define SETTING_RADIUS                 "radius"
 
 #define TEXT_KEY_COLOR                 obs_module_text("KeyColor")
 #define TEXT_SIMILARITY                obs_module_text("Similarity")
-#define TEXT_DESATURATION                obs_module_text("Desaturation")
-#define TEXT_DARKNESS                   obs_module_text("Darkness")
+#define TEXT_DESATURATION              obs_module_text("Desaturation")
+#define TEXT_DARKNESS                  obs_module_text("Darkness")
+#define TEXT_RADIUS                    obs_module_text("Radius")
 
 /* clang-format on */
 
@@ -26,11 +28,13 @@ struct color_key_filter_data_v2 {
 	gs_eparam_t *similarity_param;
 	gs_eparam_t *desaturation_param;
 	gs_eparam_t *darkness_param;
+	gs_eparam_t *radius_param;
 
 	struct vec4 key_color;
 	float similarity;
 	float desaturation;
 	float darkness;
+	float radius;
 };
 
 static const char *simple_name(void *unused)
@@ -51,6 +55,8 @@ static void color_key_update_v2(void *data, obs_data_t *settings)
 	filter->desaturation = (float)obs_data_get_double(settings, SETTING_DESATURATION);
 
 	filter->darkness = (float)obs_data_get_double(settings, SETTING_DARKNESS);
+
+	filter->radius = (float)obs_data_get_double(settings, SETTING_RADIUS);
 }
 
 static void simple_destroy(void *data)
@@ -81,6 +87,7 @@ static void *simple_create(obs_data_t *settings, obs_source_t *context)
 		filter->similarity_param = gs_effect_get_param_by_name(filter->effect, "similarity");
 		filter->desaturation_param = gs_effect_get_param_by_name(filter->effect, "desaturation");
 		filter->darkness_param = gs_effect_get_param_by_name(filter->effect, "darkness");
+		filter->radius_param = gs_effect_get_param_by_name(filter->effect, "radius");
 	}
 
 	obs_leave_graphics();
@@ -120,6 +127,7 @@ static void simple_render(void *data, gs_effect_t *effect)
 			gs_effect_set_float(filter->similarity_param, filter->similarity);
 			gs_effect_set_float(filter->desaturation_param, filter->desaturation);
 			gs_effect_set_float(filter->darkness_param, filter->darkness);
+			gs_effect_set_float(filter->radius_param, filter->radius);
 
 			gs_blend_state_push();
 			gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
@@ -139,6 +147,7 @@ static obs_properties_t *simple_properties(void *data)
 	obs_properties_add_float_slider(props, SETTING_SIMILARITY, TEXT_SIMILARITY, 0.0, 1.0, 0.0001);
 	obs_properties_add_float_slider(props, SETTING_DESATURATION, TEXT_DESATURATION, 0.0, 1.0, 0.0001);
 	obs_properties_add_float_slider(props, SETTING_DARKNESS, TEXT_DARKNESS, 0.0, 1.0, 0.0001);
+	obs_properties_add_float_slider(props, SETTING_RADIUS, TEXT_RADIUS, 0.0, 0.01, 0.00001);
 
 	UNUSED_PARAMETER(data);
 	return props;
@@ -150,6 +159,7 @@ static void simple_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, SETTING_SIMILARITY, .1);
 	obs_data_set_default_double(settings, SETTING_DESATURATION, .1);
 	obs_data_set_default_double(settings, SETTING_DARKNESS, .05);
+	obs_data_set_default_double(settings, SETTING_RADIUS, .001);
 }
 
 static enum gs_color_space simple_get_color_space(void *data, size_t count,

@@ -27,12 +27,9 @@ extern struct obs_source_info greenscreen_simple;
 bool obs_module_load(void)
 {
 	obs_register_source(&greenscreen_simple);
-
-	obs_log(LOG_INFO, "plugin loaded successfully (version %s)", PLUGIN_VERSION);
 	return true;
 }
 
 void obs_module_unload(void)
 {
-	obs_log(LOG_INFO, "plugin unloaded");
 }

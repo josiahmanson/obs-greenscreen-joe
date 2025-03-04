@@ -5,6 +5,7 @@ uniform float4 key_color;
 uniform float similarity;
 uniform float desaturation;
 uniform float darkness;
+uniform	float radius;
 
 sampler_state textureSampler {
 	Filter    = Linear;
@@ -88,16 +89,15 @@ float4 PSColorKeyRGBA(VertData v_in) : TARGET
 	
 #define NUM_SAMPLES 8
 #define NUM_TOLERANCE 3
-	float dpos = .002f;
 	float2 positions[NUM_SAMPLES];
-	positions[0] = float2(v_in.uv.x + dpos, v_in.uv.y);
-	positions[1] = float2(v_in.uv.x - dpos, v_in.uv.y);
-	positions[2] = float2(v_in.uv.x, v_in.uv.y - dpos);
-	positions[3] = float2(v_in.uv.x, v_in.uv.y + dpos);
-	positions[4] = float2(v_in.uv.x - dpos * .707f, v_in.uv.y - dpos * .707f);
-	positions[5] = float2(v_in.uv.x - dpos * .707f, v_in.uv.y + dpos * .707f);
-	positions[6] = float2(v_in.uv.x + dpos * .707f, v_in.uv.y - dpos * .707f);
-	positions[7] = float2(v_in.uv.x + dpos * .707f, v_in.uv.y + dpos * .707f);
+	positions[0] = float2(v_in.uv.x + radius, v_in.uv.y);
+	positions[1] = float2(v_in.uv.x - radius, v_in.uv.y);
+	positions[2] = float2(v_in.uv.x, v_in.uv.y - radius);
+	positions[3] = float2(v_in.uv.x, v_in.uv.y + radius);
+	positions[4] = float2(v_in.uv.x - radius * .707f, v_in.uv.y - radius * .707f);
+	positions[5] = float2(v_in.uv.x - radius * .707f, v_in.uv.y + radius * .707f);
+	positions[6] = float2(v_in.uv.x + radius * .707f, v_in.uv.y - radius * .707f);
+	positions[7] = float2(v_in.uv.x + radius * .707f, v_in.uv.y + radius * .707f);
 	
 	int countFore = 0;
 	int countBack = 0;
