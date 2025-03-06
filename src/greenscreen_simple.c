@@ -43,7 +43,7 @@ static const char *simple_name(void *unused)
 	return obs_module_text("Greenscreen Joe");
 }
 
-static void color_key_update_v2(void *data, obs_data_t *settings)
+static void simple_update(void *data, obs_data_t *settings)
 {
 	struct color_key_filter_data_v2 *filter = data;
 
@@ -99,7 +99,7 @@ static void *simple_create(obs_data_t *settings, obs_source_t *context)
 		return NULL;
 	}
 
-	color_key_update_v2(filter, settings);
+	simple_update(filter, settings);
 	return filter;
 }
 
@@ -188,7 +188,7 @@ struct obs_source_info greenscreen_simple = {
 	.create = simple_create,
 	.destroy = simple_destroy,
 	.video_render = simple_render,
-	.update = color_key_update_v2,
+	.update = simple_update,
 	.get_properties = simple_properties,
 	.get_defaults = simple_defaults,
 	.video_get_color_space = simple_get_color_space,
