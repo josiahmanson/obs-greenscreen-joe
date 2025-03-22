@@ -10,12 +10,14 @@
 #define SETTING_DESATURATION           "desaturation"
 #define SETTING_DARKNESS               "darkness"
 #define SETTING_RADIUS                 "radius"
+#define SETTING_SAMPLE_THRESHOLD       "sample_threshold"
 
 #define TEXT_KEY_COLOR                 obs_module_text("KeyColor")
 #define TEXT_SIMILARITY                obs_module_text("Similarity")
 #define TEXT_DESATURATION              obs_module_text("Desaturation")
 #define TEXT_DARKNESS                  obs_module_text("Darkness")
 #define TEXT_RADIUS                    obs_module_text("Radius")
+#define TEXT_SAMPLE_THRESHOLD          obs_module_text("Sample Threshold")
 
 /* clang-format on */
 
@@ -30,12 +32,14 @@ struct color_key_filter_data_v2 {
 	gs_eparam_t *darkness_param;
 	gs_eparam_t *radius_param;
 	gs_eparam_t *pixel_size_param;
+	gs_eparam_t *sample_threshold_param;
 
 	struct vec4 key_color;
 	float similarity;
 	float desaturation;
 	float darkness;
 	float radius;
+	int sample_threshold;
 };
 
 float hue_from_color(struct vec4 c)
@@ -79,6 +83,8 @@ static void simple_update(void *data, obs_data_t *settings)
 	filter->darkness = (float)obs_data_get_double(settings, SETTING_DARKNESS);
 
 	filter->radius = (float)obs_data_get_double(settings, SETTING_RADIUS);
+
+	filter->sample_threshold = (int)obs_data_get_int(settings, SETTING_SAMPLE_THRESHOLD);
 }
 
 static void simple_destroy(void *data)
@@ -110,6 +116,7 @@ static void *simple_create(obs_data_t *settings, obs_source_t *context)
 		filter->desaturation_param = gs_effect_get_param_by_name(filter->effect, "desaturation");
 		filter->darkness_param = gs_effect_get_param_by_name(filter->effect, "darkness");
 		filter->radius_param = gs_effect_get_param_by_name(filter->effect, "radius");
+		filter->sample_threshold_param = gs_effect_get_param_by_name(filter->effect, "sample_threshold");
 		filter->pixel_size_param = gs_effect_get_param_by_name(filter->effect, "pixel_size");
 	}
 
@@ -156,6 +163,7 @@ static void simple_render(void *data, gs_effect_t *effect)
 			gs_effect_set_float(filter->desaturation_param, filter->desaturation);
 			gs_effect_set_float(filter->darkness_param, filter->darkness);
 			gs_effect_set_float(filter->radius_param, filter->radius);
+			gs_effect_set_int(filter->sample_threshold_param, filter->sample_threshold);
 			gs_effect_set_vec2(filter->pixel_size_param, &pixel_size);
 
 			gs_blend_state_push();
@@ -177,6 +185,7 @@ static obs_properties_t *simple_properties(void *data)
 	obs_properties_add_float_slider(props, SETTING_DESATURATION, TEXT_DESATURATION, 0.0, 1.0, 0.0001);
 	obs_properties_add_float_slider(props, SETTING_DARKNESS, TEXT_DARKNESS, 0.0, 1.0, 0.0001);
 	obs_properties_add_float_slider(props, SETTING_RADIUS, TEXT_RADIUS, 0.0, 20.0, 0.01);
+	obs_properties_add_int_slider(props, SETTING_SAMPLE_THRESHOLD, TEXT_SAMPLE_THRESHOLD, 0, 8, 1);
 
 	UNUSED_PARAMETER(data);
 	return props;
@@ -189,6 +198,7 @@ static void simple_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, SETTING_DESATURATION, .1);
 	obs_data_set_default_double(settings, SETTING_DARKNESS, .05);
 	obs_data_set_default_double(settings, SETTING_RADIUS, 2);
+	obs_data_set_default_double(settings, SETTING_SAMPLE_THRESHOLD, 2);
 }
 
 static enum gs_color_space simple_get_color_space(void *data, size_t count, const enum gs_color_space *preferred_spaces)
