@@ -42,15 +42,13 @@ float3 RgbToHsv(float3 c)
 	
 	float h = 0;
 	if (c.r == maxc)
-		h = (c.g - c.b) / diff;
+		h = 1.0f + (c.g - c.b) / diff;
 	else if (c.g == maxc)
-		h = 2.0f + (c.b - c.r) / diff;
+		h = 3.0f + (c.b - c.r) / diff;
 	else
-		h = 4.0f + (c.r - c.g) / diff;
+		h = 5.0f + (c.r - c.g) / diff;
 	  
 	hsv[0] = h / 6.0f;
-	if (hsv[0] < 0)
-		hsv[0] += 1;
 
 	return hsv;
 }
@@ -138,12 +136,6 @@ float4 PSColorKeyRGBA(VertData v_in) : TARGET
 		else if (countFore < NUM_SAMPLES - NUM_TOLERANCE)
 		{
 			result.rgb = colorFore.rgb;
-		
-//			float alphas[3];
-//			for (int i = 0; i < 3; i++)
-//				alphas[i] = (color[i] - colorBack[i]) / (colorFore[i] - colorBack[i]);
-//			mask = saturate((alphas[0] * key_color[0] + alphas[1] * key_color[1] + alphas[2] * key_color[2]) / ( key_color[0] +  key_color[1] +  key_color[2]));
-
 			mask = float(countFore) / NUM_SAMPLES;
 		}
 	}
