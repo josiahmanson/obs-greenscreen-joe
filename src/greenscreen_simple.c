@@ -29,6 +29,7 @@ struct color_key_filter_data_v2 {
 	gs_eparam_t *desaturation_param;
 	gs_eparam_t *darkness_param;
 	gs_eparam_t *radius_param;
+	gs_eparam_t *pixel_size_param;
 
 	struct vec4 key_color;
 	float similarity;
@@ -109,6 +110,7 @@ static void *simple_create(obs_data_t *settings, obs_source_t *context)
 		filter->desaturation_param = gs_effect_get_param_by_name(filter->effect, "desaturation");
 		filter->darkness_param = gs_effect_get_param_by_name(filter->effect, "darkness");
 		filter->radius_param = gs_effect_get_param_by_name(filter->effect, "radius");
+		filter->pixel_size_param = gs_effect_get_param_by_name(filter->effect, "pixel_size");
 	}
 
 	obs_leave_graphics();
@@ -129,6 +131,12 @@ static void simple_render(void *data, gs_effect_t *effect)
 	UNUSED_PARAMETER(effect);
 
 	struct color_key_filter_data_v2 *filter = data;
+	obs_source_t *target = obs_filter_get_target(filter->context);
+
+	uint32_t width = obs_source_get_base_width(target);
+	uint32_t height = obs_source_get_base_height(target);
+	struct vec2 pixel_size;
+	vec2_set(&pixel_size, 1.0f / (float)width, 1.0f / (float)height);
 
 	const enum gs_color_space preferred_spaces[] = {
 		GS_CS_SRGB,
@@ -136,8 +144,7 @@ static void simple_render(void *data, gs_effect_t *effect)
 		GS_CS_709_EXTENDED,
 	};
 
-	const enum gs_color_space source_space = obs_source_get_color_space(
-		obs_filter_get_target(filter->context), OBS_COUNTOF(preferred_spaces), preferred_spaces);
+	const enum gs_color_space source_space = obs_source_get_color_space(target, OBS_COUNTOF(preferred_spaces), preferred_spaces);
 	if (source_space == GS_CS_709_EXTENDED) {
 		obs_source_skip_video_filter(filter->context);
 	} else {
@@ -149,6 +156,7 @@ static void simple_render(void *data, gs_effect_t *effect)
 			gs_effect_set_float(filter->desaturation_param, filter->desaturation);
 			gs_effect_set_float(filter->darkness_param, filter->darkness);
 			gs_effect_set_float(filter->radius_param, filter->radius);
+			gs_effect_set_vec2(filter->pixel_size_param, &pixel_size);
 
 			gs_blend_state_push();
 			gs_blend_function(GS_BLEND_ONE, GS_BLEND_INVSRCALPHA);
@@ -168,7 +176,7 @@ static obs_properties_t *simple_properties(void *data)
 	obs_properties_add_float_slider(props, SETTING_SIMILARITY, TEXT_SIMILARITY, 0.0, 1.0, 0.0001);
 	obs_properties_add_float_slider(props, SETTING_DESATURATION, TEXT_DESATURATION, 0.0, 1.0, 0.0001);
 	obs_properties_add_float_slider(props, SETTING_DARKNESS, TEXT_DARKNESS, 0.0, 1.0, 0.0001);
-	obs_properties_add_float_slider(props, SETTING_RADIUS, TEXT_RADIUS, 0.0, 0.01, 0.00001);
+	obs_properties_add_float_slider(props, SETTING_RADIUS, TEXT_RADIUS, 0.0, 20.0, 0.01);
 
 	UNUSED_PARAMETER(data);
 	return props;
@@ -180,7 +188,7 @@ static void simple_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, SETTING_SIMILARITY, .1);
 	obs_data_set_default_double(settings, SETTING_DESATURATION, .1);
 	obs_data_set_default_double(settings, SETTING_DARKNESS, .05);
-	obs_data_set_default_double(settings, SETTING_RADIUS, .001);
+	obs_data_set_default_double(settings, SETTING_RADIUS, 2);
 }
 
 static enum gs_color_space simple_get_color_space(void *data, size_t count, const enum gs_color_space *preferred_spaces)
