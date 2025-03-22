@@ -44,8 +44,8 @@ struct color_key_filter_data_v2 {
 
 float hue_from_color(struct vec4 c)
 {
-	float maxc = max(max(c.x, c.y), c.z);
-	float minc = min(min(c.x, c.y), c.z);
+	float maxc = fmaxf(fmaxf(c.x, c.y), c.z);
+	float minc = fminf(fminf(c.x, c.y), c.z);
 
 	if (minc == maxc)
 		return 0;
