@@ -1,7 +1,7 @@
 uniform float4x4 ViewProj;
 uniform texture2d image;
 
-uniform float4 key_color;
+uniform float key_hue;
 uniform float similarity;
 uniform float desaturation;
 uniform float darkness;
@@ -53,12 +53,12 @@ float3 RgbToHsv(float3 c)
 	return hsv;
 }
 
-float GetMask(float3 hsv, float3 key)
+float GetMask(float3 hsv)
 {
 	float mask = 0;
 
 	// hue distance
-	float hueDelta = min(abs(hsv[0] - key[0]), abs(hsv[0] - key[0] - 1));
+	float hueDelta = min(abs(hsv[0] - key_hue), abs(hsv[0] - key_hue - 1));
 	if (hueDelta >= similarity)
 		mask = 1;
 	
@@ -82,7 +82,6 @@ float4 SampleColor(float2 uv)
 
 float4 PSColorKeyRGBA(VertData v_in) : TARGET
 {
-	float3 key = RgbToHsv(key_color.rgb);
 	float4 color = SampleColor(v_in.uv);
 	
 #define NUM_SAMPLES 8
@@ -104,7 +103,7 @@ float4 PSColorKeyRGBA(VertData v_in) : TARGET
 	for (int i = 0; i < NUM_SAMPLES; i++)
 	{
 		float4 c = SampleColor(positions[i]);
-		float m = GetMask(RgbToHsv(c.rgb), key);
+		float m = GetMask(RgbToHsv(c.rgb));
 		if (m > .5f)
 		{
 			countFore++;
@@ -121,7 +120,7 @@ float4 PSColorKeyRGBA(VertData v_in) : TARGET
 	
 	float4 result = color;
 	
-	float mask = GetMask(RgbToHsv(color.rgb), key);
+	float mask = GetMask(RgbToHsv(color.rgb));
 	if (mask < .5f)
 	{
 		if (countFore >= NUM_SAMPLES - NUM_TOLERANCE)

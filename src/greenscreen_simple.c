@@ -24,7 +24,7 @@ struct color_key_filter_data_v2 {
 
 	gs_effect_t *effect;
 
-	gs_eparam_t *key_color_param;
+	gs_eparam_t *key_hue_param;
 	gs_eparam_t *similarity_param;
 	gs_eparam_t *desaturation_param;
 	gs_eparam_t *darkness_param;
@@ -36,6 +36,27 @@ struct color_key_filter_data_v2 {
 	float darkness;
 	float radius;
 };
+
+float hue_from_color(struct vec4 c)
+{
+	float maxc = max(max(c.x, c.y), c.z);
+	float minc = min(min(c.x, c.y), c.z);
+
+	if (minc == maxc)
+		return 0;
+
+	float diff = maxc - minc;
+
+	float h = 0;
+	if (c.x == maxc)
+		h = 1.0f + (c.y - c.z) / diff;
+	else if (c.y == maxc)
+		h = 3.0f + (c.z - c.x) / diff;
+	else
+		h = 5.0f + (c.x - c.y) / diff;
+
+	return h / 6.0f;
+}
 
 static const char *simple_name(void *unused)
 {
@@ -83,7 +104,7 @@ static void *simple_create(obs_data_t *settings, obs_source_t *context)
 
 	filter->effect = gs_effect_create_from_file(effect_path, NULL);
 	if (filter->effect) {
-		filter->key_color_param = gs_effect_get_param_by_name(filter->effect, "key_color");
+		filter->key_hue_param = gs_effect_get_param_by_name(filter->effect, "key_hue");
 		filter->similarity_param = gs_effect_get_param_by_name(filter->effect, "similarity");
 		filter->desaturation_param = gs_effect_get_param_by_name(filter->effect, "desaturation");
 		filter->darkness_param = gs_effect_get_param_by_name(filter->effect, "darkness");
@@ -123,7 +144,7 @@ static void simple_render(void *data, gs_effect_t *effect)
 		const enum gs_color_format format = gs_get_format_from_space(source_space);
 		if (obs_source_process_filter_begin_with_color_space(filter->context, format, source_space,
 								     OBS_ALLOW_DIRECT_RENDERING)) {
-			gs_effect_set_vec4(filter->key_color_param, &filter->key_color);
+			gs_effect_set_float(filter->key_hue_param, hue_from_color(filter->key_color));
 			gs_effect_set_float(filter->similarity_param, filter->similarity);
 			gs_effect_set_float(filter->desaturation_param, filter->desaturation);
 			gs_effect_set_float(filter->darkness_param, filter->darkness);
