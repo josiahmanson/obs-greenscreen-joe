@@ -151,7 +151,8 @@ static void simple_render(void *data, gs_effect_t *effect)
 		GS_CS_709_EXTENDED,
 	};
 
-	const enum gs_color_space source_space = obs_source_get_color_space(target, OBS_COUNTOF(preferred_spaces), preferred_spaces);
+	const enum gs_color_space source_space =
+		obs_source_get_color_space(target, OBS_COUNTOF(preferred_spaces), preferred_spaces);
 	if (source_space == GS_CS_709_EXTENDED) {
 		obs_source_skip_video_filter(filter->context);
 	} else {
