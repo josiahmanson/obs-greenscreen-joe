@@ -5,6 +5,7 @@ uniform float key_hue;
 uniform float similarity;
 uniform float desaturation;
 uniform float darkness;
+uniform float brightness;
 uniform	float radius;
 uniform	float2 pixel_size;
 uniform int sample_threshold;
@@ -28,13 +29,14 @@ VertData VSDefault(VertData v_in)
 	return vert_out;
 }
 
-float3 RgbToHsv(float3 c)
+float4 RgbToHsv(float3 c)
 {
-	float3 hsv = 0;
+	float4 hsv = 0;
 	float maxc = max(max(c.r, c.g), c.b);
 	float minc = min(min(c.r, c.g), c.b);
 	
 	hsv[2] = maxc;
+	hsv[3] = maxc;
 	if (minc == maxc)
 		return hsv;
 	
@@ -55,9 +57,10 @@ float3 RgbToHsv(float3 c)
 	return hsv;
 }
 
-float GetMask(float3 hsv)
+float GetMask(float3 rgb)
 {
 	float mask = 0;
+	float4 hsv = RgbToHsv(rgb);
 
 	// hue distance
 	float hueDelta = min(abs(hsv[0] - key_hue), abs(hsv[0] - key_hue - 1));
@@ -67,9 +70,13 @@ float GetMask(float3 hsv)
 	// keep if desaturated
 	if (hsv[1] < desaturation)
 		mask = 1;
-		
+	
 	// keep if dark
 	if (hsv[2] < darkness)
+		mask = 1;
+	
+	// keep if bright
+	if (hsv[3] > brightness)
 		mask = 1;
 
 	return mask;
@@ -103,7 +110,7 @@ float4 PSColorKeyRGBA(VertData v_in) : TARGET
 	for (int i = 0; i < NUM_SAMPLES; i++)
 	{
 		float4 c = SampleColor(positions[i]);
-		float m = GetMask(RgbToHsv(c.rgb));
+		float m = GetMask(c.rgb);
 		
 		if (i == 0)
 			color = c;

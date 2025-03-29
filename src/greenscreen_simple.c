@@ -9,6 +9,7 @@
 #define SETTING_SIMILARITY             "similarity"
 #define SETTING_DESATURATION           "desaturation"
 #define SETTING_DARKNESS               "darkness"
+#define SETTING_BRIGHTNESS             "brightness"
 #define SETTING_RADIUS                 "radius"
 #define SETTING_SAMPLE_THRESHOLD       "sample_threshold"
 
@@ -16,6 +17,7 @@
 #define TEXT_SIMILARITY                obs_module_text("Similarity")
 #define TEXT_DESATURATION              obs_module_text("Desaturation")
 #define TEXT_DARKNESS                  obs_module_text("Darkness")
+#define TEXT_BRIGHTNESS                obs_module_text("Brightness")
 #define TEXT_RADIUS                    obs_module_text("Radius")
 #define TEXT_SAMPLE_THRESHOLD          obs_module_text("Sample Threshold")
 
@@ -30,6 +32,7 @@ struct color_key_filter_data_v2 {
 	gs_eparam_t *similarity_param;
 	gs_eparam_t *desaturation_param;
 	gs_eparam_t *darkness_param;
+	gs_eparam_t *brightness_param;
 	gs_eparam_t *radius_param;
 	gs_eparam_t *pixel_size_param;
 	gs_eparam_t *sample_threshold_param;
@@ -38,6 +41,7 @@ struct color_key_filter_data_v2 {
 	float similarity;
 	float desaturation;
 	float darkness;
+	float brightness;
 	float radius;
 	int sample_threshold;
 };
@@ -82,6 +86,8 @@ static void simple_update(void *data, obs_data_t *settings)
 
 	filter->darkness = (float)obs_data_get_double(settings, SETTING_DARKNESS);
 
+	filter->brightness = (float)obs_data_get_double(settings, SETTING_BRIGHTNESS);
+
 	filter->radius = (float)obs_data_get_double(settings, SETTING_RADIUS);
 
 	filter->sample_threshold = (int)obs_data_get_int(settings, SETTING_SAMPLE_THRESHOLD);
@@ -115,6 +121,7 @@ static void *simple_create(obs_data_t *settings, obs_source_t *context)
 		filter->similarity_param = gs_effect_get_param_by_name(filter->effect, "similarity");
 		filter->desaturation_param = gs_effect_get_param_by_name(filter->effect, "desaturation");
 		filter->darkness_param = gs_effect_get_param_by_name(filter->effect, "darkness");
+		filter->brightness_param = gs_effect_get_param_by_name(filter->effect, "brightness");
 		filter->radius_param = gs_effect_get_param_by_name(filter->effect, "radius");
 		filter->sample_threshold_param = gs_effect_get_param_by_name(filter->effect, "sample_threshold");
 		filter->pixel_size_param = gs_effect_get_param_by_name(filter->effect, "pixel_size");
@@ -163,6 +170,7 @@ static void simple_render(void *data, gs_effect_t *effect)
 			gs_effect_set_float(filter->similarity_param, filter->similarity);
 			gs_effect_set_float(filter->desaturation_param, filter->desaturation);
 			gs_effect_set_float(filter->darkness_param, filter->darkness);
+			gs_effect_set_float(filter->brightness_param, filter->brightness);
 			gs_effect_set_float(filter->radius_param, filter->radius);
 			gs_effect_set_int(filter->sample_threshold_param, filter->sample_threshold);
 			gs_effect_set_vec2(filter->pixel_size_param, &pixel_size);
@@ -185,6 +193,7 @@ static obs_properties_t *simple_properties(void *data)
 	obs_properties_add_float_slider(props, SETTING_SIMILARITY, TEXT_SIMILARITY, 0.0, 1.0, 0.0001);
 	obs_properties_add_float_slider(props, SETTING_DESATURATION, TEXT_DESATURATION, 0.0, 1.0, 0.0001);
 	obs_properties_add_float_slider(props, SETTING_DARKNESS, TEXT_DARKNESS, 0.0, 1.0, 0.0001);
+	obs_properties_add_float_slider(props, SETTING_BRIGHTNESS, TEXT_BRIGHTNESS, 0.0, 1.0, 0.0001);
 	obs_properties_add_float_slider(props, SETTING_RADIUS, TEXT_RADIUS, 0.0, 20.0, 0.01);
 	obs_properties_add_int_slider(props, SETTING_SAMPLE_THRESHOLD, TEXT_SAMPLE_THRESHOLD, 0, 8, 1);
 
@@ -195,9 +204,10 @@ static obs_properties_t *simple_properties(void *data)
 static void simple_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_int(settings, SETTING_KEY_COLOR, 0x00FF00);
-	obs_data_set_default_double(settings, SETTING_SIMILARITY, .1);
-	obs_data_set_default_double(settings, SETTING_DESATURATION, .1);
+	obs_data_set_default_double(settings, SETTING_SIMILARITY, .15);
+	obs_data_set_default_double(settings, SETTING_DESATURATION, .2);
 	obs_data_set_default_double(settings, SETTING_DARKNESS, .05);
+	obs_data_set_default_double(settings, SETTING_BRIGHTNESS, .8);
 	obs_data_set_default_double(settings, SETTING_RADIUS, 2);
 	obs_data_set_default_double(settings, SETTING_SAMPLE_THRESHOLD, 2);
 }
