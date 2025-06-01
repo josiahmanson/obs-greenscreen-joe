@@ -1,6 +1,9 @@
 # Exclude everything
 /*
 
+# joe's zip build bat
+!/*.bat
+
 # Except for default project files
 !/.github
 !/build-aux
